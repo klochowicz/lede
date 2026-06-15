@@ -19,8 +19,11 @@ items on demand; it does not produce a scheduled *cross-source synthesis*.
 - **LLM job:** cross-source **theme synthesis** (not per-item TL;DR).
 - **Delivery:** scheduled **email digest** + **PWA/web dashboard** archive.
 - **Stack:** Django first-class (portfolio), Celery the async core, Postgres, Redis.
-- **LLM provider:** provider-agnostic — **Claude Max subscription (default)**, Claude API
-  (fallback), DeepSeek (cheap). See LLM layer below.
+- **LLM provider:** provider-agnostic — **Claude API (committed default)**, Claude Max
+  subscription (**local-dev default**), DeepSeek (cheap). The default is set per environment via
+  layered settings: base/production defaults to `claude-api` (reproducible — what a reviewer and
+  prod get); local-dev settings override `BRIEFING_LLM_BACKEND=claude-subscription` so day-to-day
+  dev runs are free-at-margin on the developer's logged-in box. See LLM layer below.
 - **Deploy:** Raspberry Pi (≥4GB, Postgres/repo on USB SSD) or Hetzner CX22. LLM is API/CLI-based;
   no GPU.
 
@@ -43,9 +46,14 @@ Celery Beat ──poll (fan-out, retried)──> Items in Postgres
   service worker (installable, not offline-first), digest archive with **Postgres full-text
   search**, `django-allauth` GitHub OAuth (login), email rendering/send, **Django admin** for
   managing sources + re-triggering runs.
-- **Celery** — scheduled + chorded + retried pipeline. README documents the boundary: a one-off
-  "re-summarise this item" is the kind of thing Django 6 `django.tasks` covers; the
-  scheduled/chained/retried pipeline is why Celery exists.
+- **Celery** — scheduled + chorded + retried pipeline. README documents the boundary precisely:
+  Django 6 `django.tasks` is a task-*enqueue* abstraction (an interface with pluggable backends —
+  Celery can be one of them), not a distributed scheduler. It covers the one-off "re-summarise
+  this item" enqueue. This workload needs three things it doesn't provide — a **scheduler** (Beat;
+  `django.tasks` has no periodic trigger), a **workflow canvas** (the `chord` aggregating N
+  `summarise_item` results into one `build_digest`; `django.tasks` fires a single task, no
+  group/chain/chord), and **serious retry + rate-limiting** across workers for flaky LLM/HTTP I/O.
+  The orchestrated, scheduled, fault-tolerant pipeline is what Celery is *for*.
 
 ## Data model (Postgres, Django ORM)
 
@@ -75,8 +83,8 @@ Everything above it (tasks, models) is backend-blind. Backend chosen via `BRIEFI
 
 | Backend | Auth | Cost | Notes |
 |---|---|---|---|
-| **Claude subscription** (default) | `claude login` OAuth, via the **Claude Agent SDK** / `claude -p --output-format json` | Max included usage | Worker shells out to an authenticated CLI (same shape as a headless-render worker). Edge-of-intended-use; quota shared with interactive Claude Code use (5-hour + weekly caps); device-flow login on the box, SDK/CLI keeps tokens refreshed. |
-| **Claude API** (fallback) | `ANTHROPIC_API_KEY` | pay-per-token | Anthropic SDK (reuses the `gtm/wp-audit` pattern). Models: condense `claude-haiku-4-5` ($1/$5), synthesis `claude-sonnet-4-6` ($3/$15) or `claude-opus-4-8` ($5/$25). |
+| **Claude API** (default) | `ANTHROPIC_API_KEY` | pay-per-token | Anthropic SDK (reuses the `gtm/wp-audit` pattern). The reproducible default — a reviewer runs it with their own key. Models: condense `claude-haiku-4-5` ($1/$5), synthesis `claude-sonnet-4-6` ($3/$15) or `claude-opus-4-8` ($5/$25). |
+| **Claude subscription** (local-dev default) | `claude login` OAuth, via the **Claude Agent SDK** / `claude -p --output-format json` | Max included usage | The **local-dev default** (set in local settings) so dev iteration is free-at-margin on the developer's logged-in box. Worker shells out to an authenticated CLI (same shape as a headless-render worker). Edge-of-intended-use; quota shared with interactive Claude Code use (5-hour + weekly caps), so a digest burst can contend with your coding quota; device-flow login on the box, SDK/CLI keeps tokens refreshed. Not used in prod/CI (CI uses a mocked backend). |
 | **DeepSeek** (cheap) | `DEEPSEEK_API_KEY` | ~order of magnitude cheaper | Uses the **`openai` SDK** at `base_url="https://api.deepseek.com"`, NOT the Anthropic SDK — keep that split behind the protocol. Data leaves to a third party (privacy note for the user's content). |
 
 > The subscription path and the (deferred) headless-Whisper/Emacs ideas share one pattern:
@@ -100,7 +108,8 @@ RAG/pgvector Q&A, offline-first SW.
 ## Critical files (greenfield)
 
 - `pyproject.toml`, `.mise.toml`, `compose.yaml`, `Dockerfile`
-- `config/settings.py`, `config/celery.py`, `config/urls.py`
+- `config/settings/` (`base.py` — `BRIEFING_LLM_BACKEND=claude-api`; `local.py` — overrides to
+  `claude-subscription`; `production.py`), `config/celery.py`, `config/urls.py`
 - `briefing/models.py`, `briefing/admin.py`, `briefing/tasks.py`,
   `briefing/sources/` (`rss.py`, `readwise.py`), `briefing/llm.py` (`LLMBackend` + 3 backends),
   `briefing/views.py`, `briefing/templates/`, static `manifest.json` + `sw.js`
@@ -114,9 +123,9 @@ RAG/pgvector Q&A, offline-first SW.
 - Trigger `build_digest` over a window → confirm `Digest`/`Theme`/`ThemeItem` persisted and a
   digest email renders (console backend in dev).
 - Browse the PWA archive on a phone; run a full-text search.
-- LLM layer: with `BRIEFING_LLM_BACKEND=claude-subscription`, a smoke task condenses one item via
-  `claude -p` using the logged-in subscription. Swap to `claude-api` / `deepseek` and confirm the
-  same task succeeds — proves the abstraction.
+- LLM layer: with the default `BRIEFING_LLM_BACKEND=claude-api`, a smoke task condenses one item
+  via the Anthropic SDK. Swap to `claude-subscription` (shells out to `claude -p` on a logged-in
+  box) / `deepseek` and confirm the same task succeeds — proves the abstraction.
 - `mise run ci` = ruff + pyright + pytest. Tests mock the LLM + HTTP, run Celery
   `task_always_eager`, assert: re-poll idempotency, chord aggregation, FTS query. (Don't mock
   tests into passing.)
