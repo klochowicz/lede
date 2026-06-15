@@ -14,12 +14,12 @@
 
 ## Type-annotation policy
 
-Annotate where it buys safety or documents intent; don't annotate where it's noise. Enforced by `ruff` (`ANN` rules) + `pyright` (`standard`) in `mise run ci`, so a missing or wrong annotation fails CI.
+Annotate where it buys safety or documents intent; don't annotate where it's noise. Enforced by `ruff` (`ANN` rules) + `mypy` (with the `django-stubs` mypy plugin) in `mise run ci`, so a missing or wrong annotation fails CI. (Note: implementation switched from pyright to mypy mid-build — pyright + django-stubs can't run the stubs' mypy plugin, so it false-positived on `get_FOO_display`, Celery `.delay`, and `env()` defaults.)
 
 - **Always annotate function signatures** — every parameter and the return type, in `briefing/` and `config/`. Celery tasks included (`-> list[int]`, `-> int | None`, `-> None`). This is the line `ruff ANN` enforces.
 - **Use precise domain types, not bare containers.** The LLM protocol returns `list[dict]` at the boundary, but model-facing helpers should say what they mean: `RawItem` (a frozen dataclass) instead of a loose dict; `Source.Kind`/`Digest.Status` enums instead of `str` literals at call sites.
 - **`X | None` directly** — native on 3.12, no `from __future__ import annotations` needed. Only add that import to a module that needs forward references (a type referenced before it's defined); the pipeline modules here don't.
-- **Lean on the stubs.** `django-stubs` gives `Item.objects` / `QuerySet[Item]` real types — let pyright infer locals from them rather than hand-annotating every `queryset` variable.
+- **Lean on the stubs.** `django-stubs` (+ its mypy plugin) gives `Item.objects` / `QuerySet[Item]` real types — let mypy infer locals from them rather than hand-annotating every `queryset` variable.
 - **Where annotations DON'T pay off** (and `ANN` is intentionally relaxed): `test_*` functions (return type is always `None`, signature is self-evident) and generated migrations. Don't annotate local variables whose type pyright already infers — that's the noise to avoid.
 - **No `Any` as an escape hatch.** If a third-party return is loosely typed, narrow it at the boundary (e.g. parse the LLM JSON into the known theme shape) rather than letting `Any` leak inward.
 

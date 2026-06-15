@@ -1,0 +1,15 @@
+{% extends "briefing/base.html" %}
+{% block content %}
+  {% if digest %}
+    <h1>{{ digest.get_kind_display }} briefing</h1>
+    {% for theme in digest.themes.all %}
+      <section><h2>{{ theme.title }}</h2><p>{{ theme.narrative }}</p>
+        <ul>{% for link in theme.theme_items.all %}
+          <li><a href="{{ link.item.url }}">{{ link.item.title }}</a> — {{ link.rationale }}</li>
+        {% endfor %}</ul>
+      </section>
+    {% endfor %}
+  {% else %}
+    <p>No digest yet.</p>
+  {% endif %}
+{% endblock %}

@@ -171,6 +171,12 @@ def kick_off_daily() -> None:
     kick_off_digest("daily", (end - timedelta(days=1)).isoformat(), end.isoformat())
 
 
+@shared_task
+def kick_off_weekly() -> None:
+    end = timezone.now()
+    kick_off_digest("weekly", (end - timedelta(days=7)).isoformat(), end.isoformat())
+
+
 def _as_item_id(value: object) -> int | None:
     # The model may echo item_id as a string despite the prompt asking for int; coerce defensively.
     if isinstance(value, int):

@@ -12,6 +12,7 @@ dependencies = [
     "openai>=1.50",
     "requests>=2.32",
     "django-environ>=0.11",
+    "django-allauth>=65.0",
 ]
 
 [dependency-groups]
@@ -50,7 +51,7 @@ warn_redundant_casts = true
 
 [[tool.mypy.overrides]]
 # These ship no py.typed / stubs — treat as Any rather than erroring on the import.
-module = ["celery.*", "environ.*", "feedparser.*"]
+module = ["celery.*", "environ.*", "feedparser.*", "allauth.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

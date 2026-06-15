@@ -10,7 +10,7 @@
 
 **Prerequisite:** Plan 1 is implemented (models, tasks, LLM layer, admin). This plan assumes `Item.search_vector` exists as a `SearchVectorField(null=True)` and that `summarise_item` is the place a summary first lands.
 
-**Type-annotation policy:** identical to Plan 1 — all signatures annotated (views return `HttpResponse`), domain types over loose containers, `ANN`+pyright enforce it in `mise run ci`, tests/migrations exempt.
+**Type-annotation policy:** identical to Plan 1 — all signatures annotated (views return `HttpResponse`), domain types over loose containers, `ANN` (ruff) + `mypy` (with the django-stubs plugin) enforce it in `mise run ci`, tests/migrations exempt.
 
 ---
 
@@ -610,7 +610,8 @@ SOCIALACCOUNT_PROVIDERS = {
         "SCOPE": ["read:user"],
     }
 }
-SOCIALACCOUNT_LOGIN_ON_GET = True
+# Leave SOCIALACCOUNT_LOGIN_ON_GET at its default (False): provider login must be a
+# CSRF-protected POST, not a GET (avoids login CSRF). Do not set it to True.
 ```
 
 - [ ] **Step 5: Migrate and run the test**
