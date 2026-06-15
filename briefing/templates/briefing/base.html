@@ -1,0 +1,25 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Briefing{% endblock %}</title>
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+</head>
+<body>
+  <nav>
+    <a href="{% url 'briefing:dashboard' %}">Latest</a>
+    <a href="{% url 'briefing:archive' %}">Archive</a>
+    <form action="{% url 'briefing:search' %}" method="get">
+      <input name="q" placeholder="Search items" value="{{ query|default:'' }}">
+    </form>
+  </nav>
+  <main>{% block content %}{% endblock %}</main>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("{% static 'sw.js' %}");
+    }
+  </script>
+</body>
+</html>

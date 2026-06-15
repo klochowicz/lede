@@ -1,0 +1,8 @@
+{% extends "briefing/base.html" %}
+{% block content %}
+  <h1>Search</h1>
+  {% if query %}<p>Results for "{{ query }}":</p>{% endif %}
+  <ul>{% for item in results %}
+    <li><a href="{{ item.url }}">{{ item.title }}</a> — {{ item.summary }}</li>
+  {% empty %}<li>No matches.</li>{% endfor %}</ul>
+{% endblock %}

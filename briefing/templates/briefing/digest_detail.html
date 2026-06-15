@@ -1,0 +1,7 @@
+{% extends "briefing/base.html" %}
+{% block content %}
+  <h1>{{ digest.get_kind_display }} — {{ digest.period_end|date:"j M Y" }}</h1>
+  {% for theme in digest.themes.all %}
+    <section><h2>{{ theme.title }}</h2><p>{{ theme.narrative }}</p></section>
+  {% endfor %}
+{% endblock %}

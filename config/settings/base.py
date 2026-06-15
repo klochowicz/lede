@@ -21,6 +21,14 @@ INSTALLED_APPS = [
     "briefing",
 ]
 
+INSTALLED_APPS += [
+    "django.contrib.sites",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.github",
+]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -28,7 +36,10 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+MIDDLEWARE += ["allauth.account.middleware.AccountMiddleware"]
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -86,4 +97,42 @@ CELERY_BEAT_SCHEDULE = {
         "task": "briefing.tasks.kick_off_daily",
         "schedule": crontab(hour=7, minute=0),
     },
+    "weekly-digest": {
+        "task": "briefing.tasks.kick_off_weekly",
+        "schedule": crontab(hour=8, minute=0, day_of_week="mon"),
+    },
 }
+
+# django-allauth
+SITE_ID = 1
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+SOCIALACCOUNT_PROVIDERS = {
+    "github": {
+        "APPS": [
+            {
+                "client_id": env("GITHUB_CLIENT_ID", default=""),
+                "secret": env("GITHUB_CLIENT_SECRET", default=""),
+                "key": "",
+            }
+        ],
+        "SCOPE": ["read:user"],
+    }
+}
+# Leave SOCIALACCOUNT_LOGIN_ON_GET at its default (False): provider login must be a
+# CSRF-protected POST from the confirmation page, not a GET (avoids login CSRF).
+
+# GitHub OAuth is the only intended way in — disable local password signup/login so a
+# stranger can't POST /accounts/signup/ to mint a local account. (Restricting *which*
+# GitHub users may log in is a separate owner-allowlist decision; see the plan follow-ups.)
+SOCIALACCOUNT_ONLY = True
+ACCOUNT_EMAIL_VERIFICATION = "none"
+# Gate signup to specific GitHub usernames. Empty = open (dev); set in prod, e.g.
+# BRIEFING_ALLOWED_GITHUB_LOGINS=klochowicz, to lock the app to its owner.
+SOCIALACCOUNT_ADAPTER = "briefing.adapters.AllowlistSocialAccountAdapter"
+BRIEFING_ALLOWED_GITHUB_LOGINS = env.list("BRIEFING_ALLOWED_GITHUB_LOGINS", default=[])
+
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"
