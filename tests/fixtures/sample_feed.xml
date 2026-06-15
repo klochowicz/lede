@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Demo</title>
+  <item><guid>post-1</guid><link>https://demo/1</link><title>First</title>
+    <author>alice</author><description>Body one</description></item>
+  <item><guid>post-2</guid><link>https://demo/2</link><title>Second</title>
+    <author>bob</author><description>Body two</description></item>
+</channel></rss>
