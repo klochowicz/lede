@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env()
@@ -71,3 +72,18 @@ READWISE_TOKEN = env("READWISE_TOKEN", default="")
 
 # Digest windows
 BRIEFING_POLL_INTERVAL_MINUTES = 30
+
+# Digest delivery
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="briefing@localhost")
+BRIEFING_DIGEST_RECIPIENT = env("BRIEFING_DIGEST_RECIPIENT", default="me@localhost")
+
+CELERY_BEAT_SCHEDULE = {
+    "poll-all-sources": {
+        "task": "briefing.tasks.poll_all_sources",
+        "schedule": BRIEFING_POLL_INTERVAL_MINUTES * 60,
+    },
+    "daily-digest": {
+        "task": "briefing.tasks.kick_off_daily",
+        "schedule": crontab(hour=7, minute=0),
+    },
+}

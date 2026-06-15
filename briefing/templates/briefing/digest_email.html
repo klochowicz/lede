@@ -1,0 +1,18 @@
+<!doctype html>
+<html><body>
+  <h1>{{ digest.get_kind_display }} briefing</h1>
+  <p>{{ digest.period_start|date:"j M" }} – {{ digest.period_end|date:"j M" }}</p>
+  {% for theme in digest.themes.all %}
+    <section>
+      <h2>{{ theme.title }}</h2>
+      <p>{{ theme.narrative }}</p>
+      <ul>
+        {% for link in theme.theme_items.all %}
+          <li><a href="{{ link.item.url }}">{{ link.item.title }}</a> — {{ link.rationale }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% empty %}
+    <p>No themes this period.</p>
+  {% endfor %}
+</body></html>
