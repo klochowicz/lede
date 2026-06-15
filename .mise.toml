@@ -1,0 +1,30 @@
+[tools]
+python = "3.12"
+uv = "latest"
+
+[env]
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+
+[tasks.install]
+run = "uv sync"
+
+[tasks.dev]
+run = "uv run python manage.py runserver"
+
+[tasks.worker]
+run = "uv run celery -A config worker -l info"
+
+[tasks.beat]
+run = "uv run celery -A config beat -l info"
+
+[tasks.test]
+run = "uv run pytest"
+# pytest-django lets the DJANGO_SETTINGS_MODULE env var override pyproject's ini setting, so the
+# dev default above would otherwise leak into tests; pin the test settings for this task explicitly.
+env = { DJANGO_SETTINGS_MODULE = "config.settings.test" }
+
+[tasks.lint]
+run = ["uv run ruff check .", "uv run ruff format --check .", "uv run mypy"]
+
+[tasks.ci]
+depends = ["lint", "test"]

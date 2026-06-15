@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref so a fresh push doesn't queue behind a stale one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: lint + test
+    runs-on: ubuntu-latest
+
+    # Tests hit a real Postgres (config.settings.base enables django.contrib.postgres).
+    # Celery runs eager in test settings, so no Redis broker is required.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: briefing
+          POSTGRES_USER: briefing
+          POSTGRES_PASSWORD: briefing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U briefing"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Matches the committed default in config/settings/base.py; pinned here for clarity.
+      DATABASE_URL: postgres://briefing:briefing@localhost:5432/briefing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up mise (provides Python + uv from .mise.toml)
+        uses: jdx/mise-action@v2
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run CI (ruff + mypy + pytest)
+        run: mise run ci

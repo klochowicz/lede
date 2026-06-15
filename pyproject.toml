@@ -1,0 +1,61 @@
+[project]
+name = "lede"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0,<6.1",
+    "celery>=5.4",
+    "redis>=5.0",
+    "psycopg[binary]>=3.2",
+    "django-environ>=0.11",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.0",
+    "pytest-django>=4.9",
+    # django-stubs' mypy plugin resolves Django dynamics (get_FOO_display, reverse relations).
+    "django-stubs[compatible-mypy]>=5.1",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# ANN = flake8-annotations: require annotated function signatures.
+select = ["E", "F", "I", "UP", "B", "DJ", "ANN"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests read better without return annotations on every test_* fn; migrations are generated.
+"tests/**" = ["ANN"]
+"**/migrations/**" = ["ANN", "E501"]
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+python_version = "3.12"
+files = ["briefing", "config", "tests"]
+exclude = ['/migrations/']
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+# These ship no py.typed / stubs — treat as Any rather than erroring on the import.
+module = ["celery.*", "environ.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Tests lean on MagicMock/fixtures; don't require every test fn to be fully annotated.
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.django-stubs]
+django_settings_module = "config.settings.base"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+addopts = "-q"
